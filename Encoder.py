@@ -1,18 +1,24 @@
 import torch
 import torch.nn as nn
+from config import *
 
 
 class EncoderRNN(nn.Module):
     def __init__(self, input_size, hidden_size):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
-        self.embedding = nn.Embedding(input_size, hidden_size)
-        self.lstm = nn.LSTM(hidden_size, hidden_size)
+        self.embedding = nn.Embedding(input_size, embedding_dim=Config.embedding_dim)
+        self.lstm = nn.LSTM(Config.embedding_dim, hidden_size, num_layers=Config.num_layers)
 
     def forward(self, input_seq, hidden):
-        output = self.embedding(input_seq).view(1, 1, -1)
-        output, hidden = self.lstm(output, hidden)
-        return output, hidden
-
-    def initHidden(self):
-        return torch.zeros(1, 1, self.hidden_size)
+        seq_len, batch_size = input_seq.size()
+        # input_seq: [seq_len, batch_size]
+        if hidden is None:
+            h_0 = input_seq.data.new(Config.num_layers, batch_size, self.hidden_size).fill_(0).float()
+            c_0 = input_seq.data.new(Config.num_layers, batch_size, self.hidden_size).fill_(0).float()
+        else:
+            h_0, c_0 = hidden
+        embeds = self.embedding(input_seq)      # embeds: [seq_len, batch_size, embed_dim]
+        output, (h_n, c_n) = self.lstm(embeds, (h_0, c_0))
+        # output: [seq_len, batch_size, hidden_dim], h_n/c_n: [num_layers, batch_size, hidden_dim]
+        return h_n, c_n
