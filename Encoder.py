@@ -10,7 +10,7 @@ class EncoderRNN(nn.Module):
         self.embedding = nn.Embedding(input_size, embedding_dim=Config.embedding_dim)
         self.lstm = nn.LSTM(Config.embedding_dim, hidden_size, num_layers=Config.num_layers)
 
-    def forward(self, input_seq, hidden):
+    def forward(self, input_seq, hidden=None):
         seq_len, batch_size = input_seq.size()
         # input_seq: [seq_len, batch_size]
         if hidden is None:
@@ -21,4 +21,4 @@ class EncoderRNN(nn.Module):
         embeds = self.embedding(input_seq)      # embeds: [seq_len, batch_size, embed_dim]
         output, (h_n, c_n) = self.lstm(embeds, (h_0, c_0))
         # output: [seq_len, batch_size, hidden_dim], h_n/c_n: [num_layers, batch_size, hidden_dim]
-        return h_n, c_n
+        return output, (h_n, c_n)

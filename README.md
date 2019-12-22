@@ -19,7 +19,7 @@ python main.py
 But you can still try it by typing the following command
 
 ```shell script
-python write_poen.py
+python write_poem.py
 ```
 
 ### References

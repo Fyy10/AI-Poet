@@ -22,10 +22,10 @@ def train():
     data_loader = DataLoader(data, batch_size=Config.batch_size, shuffle=True, num_workers=Config.num_workers)
 
     # model
-    # model = Seq2Seq(len(word2ix), Config.hidden_dim)
     model = CharRNN(len(word2ix),
                     embedding_dim=Config.embedding_dim,
                     hidden_dim=Config.hidden_dim)
+    # model = Seq2Seq(len(word2ix), Config.hidden_dim)
     model = model.to(device)
     print(model)
 

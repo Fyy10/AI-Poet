@@ -10,30 +10,23 @@ class Seq2Seq(nn.Module):   # still some problems
         super(Seq2Seq, self).__init__()
         self.encoder = Encoder.EncoderRNN(input_size=voc_size,
                                           hidden_size=hidden_dim)
+        # try to map hidden_dim to 1 dim (may be problem here)
+        self.fc = nn.Linear(hidden_dim, 1)
         self.decoder = Decoder.DecoderRNN(hidden_size=hidden_dim,
                                           output_size=voc_size)
 
-    def forward(self, src, trg, hidden):
-        # src: [src_len, batch_size]
-        # trg: [trg_len, batch_size]
-        batch_size = trg.shape[1]
-        trg_len = trg.shape[0]
-        trg_vocab_size = self.decoder.output_size
-
-        # tensor to store decoder outputs
-        outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(Config.device)
-
-        # last hidden state of encoder used as the initial hidden state of the decoder
-        hidden, cell = self.encoder(src, None)
+    def forward(self, in_seq, hidden=None):
+        # last hidden state of encoder used as the context vector (how? & why?)
+        # in_seq: [seq_len, batch_size]
+        output, (hidden, cell) = self.encoder(in_seq, hidden)
+        # output: [seq_len, batch_size, hidden_dim]
         # h_n/c_n: [num_layers, batch_size, hidden_dim]
-
-        # first input to the decoder is <sos>
-        in_seq = trg[0, :]
-        for t in range(1, trg_len):
-            output, (hidden, cell) = self.decoder(in_seq, hidden, cell)
-            outputs[t] = output
-            top1 = output.argmax(1)
-            in_seq = top1
+        output = self.fc(output).long()
+        # output: [seq_len, batch_size, 1]
+        output = output[:, :, 0]
+        # output: [seq_len, batch_size]
+        context = output
+        output, hidden = self.decoder(context, (hidden, cell))
         return output, hidden
 
 
