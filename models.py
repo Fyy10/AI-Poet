@@ -10,23 +10,18 @@ class Seq2Seq(nn.Module):   # still some problems
         super(Seq2Seq, self).__init__()
         self.encoder = Encoder.EncoderRNN(input_size=voc_size,
                                           hidden_size=hidden_dim)
-        # try to map hidden_dim to 1 dim (may be problem here)
-        self.fc = nn.Linear(hidden_dim, 1)
         self.decoder = Decoder.DecoderRNN(hidden_size=hidden_dim,
                                           output_size=voc_size)
 
-    def forward(self, in_seq, hidden=None):
-        # last hidden state of encoder used as the context vector (how? & why?)
+    def forward(self, in_seq, target, hidden=None):
+        seq_len, batch_size = in_seq.size()
+        # last hidden state of Encoder used as Decoder's initial hidden
         # in_seq: [seq_len, batch_size]
-        output, (hidden, cell) = self.encoder(in_seq, hidden)
+        output, hidden = self.encoder(in_seq, hidden)
         # output: [seq_len, batch_size, hidden_dim]
         # h_n/c_n: [num_layers, batch_size, hidden_dim]
-        output = self.fc(output).long()
-        # output: [seq_len, batch_size, 1]
-        output = output[:, :, 0]
-        # output: [seq_len, batch_size]
-        context = output
-        output, hidden = self.decoder(context, (hidden, cell))
+        context = target
+        output, hidden = self.decoder(context, hidden)
         return output, hidden
 
 

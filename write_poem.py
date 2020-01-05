@@ -9,10 +9,13 @@ def write_poem():
     dataset = np.load(Config.data_path, allow_pickle=True)
     ix2word = dataset['ix2word'].item()
     word2ix = dataset['word2ix'].item()
-    model = CharRNN(len(ix2word), Config.embedding_dim, Config.hidden_dim)
-    # model = Seq2Seq(len(ix2word), Config.hidden_dim)
+    if Config.model_type == 'CharRNN':
+        model = CharRNN(len(ix2word), Config.embedding_dim, Config.hidden_dim)
+    elif Config.model_type == 'Seq2Seq':
+        model = Seq2Seq(len(ix2word), Config.hidden_dim)
+    else:
+        raise TypeError('Wrong model type!')
     model.load_state_dict(torch.load(Config.model_path, Config.device))
-    # model.load_state_dict(torch.load('CheckPoints/tang_0.pth', Config.device))
     print('Done!')
     while True:
         start_words = str(input())
