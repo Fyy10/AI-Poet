@@ -5,6 +5,7 @@ import torch.nn as nn
 from config import *
 
 
+# This seq2seq model may not be useful since encoder and decoder will be trained separately
 class Seq2Seq(nn.Module):   # still some problems
     def __init__(self, voc_size, hidden_dim):
         super(Seq2Seq, self).__init__()
