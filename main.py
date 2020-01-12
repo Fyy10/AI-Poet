@@ -87,15 +87,14 @@ def train_seq2seq():
     encoder = Encoder.EncoderRNN(len(word2ix), Config.hidden_dim).to(Config.device)
     decoder = Decoder.DecoderRNN(Config.hidden_dim, len(word2ix)).to(Config.device)
 
-    # optimizer and loss function
-    # optimizer = optim.Adam(model.parameters(), lr=Config.learning_rate)
-    # criterion = nn.CrossEntropyLoss()
-    # if Config.model_path:
-    #     model.load_state_dict(torch.load(Config.model_path))
-    #
-    # learning_route = []
+    # load model
+    print('Loading pre-trained model...')
+    encoder.load_state_dict(torch.load('%s_%s.pth' % (Config.model_prefix, 'encoder')))
+    decoder.load_state_dict(torch.load('%s_%s.pth' % (Config.model_prefix, 'decoder')))
+    print('Done!')
 
     # training iterations
+    print('Start training...')
     n_iters = 10000
     print_every = 100
     plot_every = 10
@@ -131,45 +130,24 @@ def train_seq2seq():
             plot_losses.append(plot_loss_ave)
             plot_loss_total = 0
 
-    plt.plot(plot_losses)
-    # todo: save model: encoder and decoder
-
-    # train
-    # for epoch in range(Config.epoch):
-    #     for step, data_ in enumerate(data_loader):
-    #         # data_ = [batch_size, seq_len]
-    #         data_ = data_.long().transpose(1, 0).contiguous()   # data_ = [seq_len, batch_size]
-    #         data_ = data_.to(device)
-    #
-    #         optimizer.zero_grad()
-    #         # input_ = 0..n-2 / target = 1..n-1
-    #         input_, target = data_[:-1, :], data_[1:, :]
-    #         # input_, target: [seq_len, batch_size]
-    #         output, _ = model(input_, target)
-    #         print(output)
-    #         print(target.view(-1))
-    #         # output: [seq_len * batch_size, voc_size]
-    #         # target: [seq_len, batch_size]
-    #         loss = criterion(output, target.view(-1))
-    #         loss.backward()
-    #         optimizer.step()
-    #         if step % 10 == 0:
-    #             learning_route.append(loss.item())
-    #         if step % 100 == 0:
-    #             print('Epoch: {}, Step: {}, Loss: {}'.format(epoch, step, loss.item()))
-    #     torch.save(model.state_dict(), '%s_%s.pth' % (Config.model_prefix, epoch))
-    # torch.save(model.state_dict(), Config.model_path)
+    # save model
+    torch.save(encoder.state_dict(), '%s_%s.pth' % (Config.model_prefix, 'encoder'))
+    torch.save(decoder.state_dict(), '%s_%s.pth' % (Config.model_prefix, 'decoder'))
     print('Finished Training')
 
-    # plot learning route
-    # plt.figure('Learning Route')
-    # plt.plot(learning_route)
-    # plt.xlabel('*10 steps')
-    # plt.ylabel('Loss')
-    # plt.show()
+    # plot
+    plt.figure('Learning Route')
+    plt.plot(plot_losses)
+    plt.xlabel('Step')
+    plt.ylabel('Loss')
+    plt.show()
+
+    # evaluate
+    # sentence = input()
+    # poem_out = evaluate(encoder, decoder, sentence, word2ix, ix2word)
+    # print(''.join(poem_out))
 
 
-# todo: something wrong with training code here (decoder hidden size is not correct)
 def train_step(input_tensor, target_tensor, encoder, decoder,
                encoder_optimizer, decoder_optimizer, criterion, word2ix, max_length=Config.max_gen_len):
     encoder_hidden = encoder.init_hidden()
@@ -208,10 +186,35 @@ def train_step(input_tensor, target_tensor, encoder, decoder,
     return loss.item() / target_length
 
 
-# todo: evaluating and generating poems
-def evaluate(encoder, decoder, sentence, max_length = Config.max_gen_len):
+def evaluate(encoder, decoder, sentence, word2ix, ix2word, max_length=Config.max_gen_len):
     with torch.no_grad():
-        pass
+        indexes = [word2ix[w] for w in sentence]
+        indexes.append(word2ix['<EOP>'])
+        indexes.reverse()
+        input_tensor = torch.tensor(indexes, dtype=torch.long, device=Config.device).view(-1, 1)
+        input_length = input_tensor.size()[0]
+        encoder_hidden = encoder.init_hidden()
+
+        encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=Config.device)
+
+        for ei in range(input_length):
+            encoder_output, encoder_hidden = encoder(input_tensor[ei], encoder_hidden)
+            encoder_outputs[ei] += encoder_output[0, 0]
+
+        decoder_input = torch.tensor([[word2ix['<START>']]], device=Config.device)
+        decoder_hidden = encoder_hidden
+        decoded_words = []
+
+        for di in range(max_length):
+            decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+            topv, topi = decoder_output.data.topk(1)
+            if topi.item() == word2ix['<EOP>']:
+                decoded_words.append('<EOP>')
+                break
+            else:
+                decoded_words.append(ix2word[topi.item()])
+            decoder_input = topi.squeeze().detach()
+        return decoded_words
 
 
 def main():

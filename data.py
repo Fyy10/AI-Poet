@@ -1,4 +1,3 @@
-# This code is only used for testing the data
 import numpy as np
 import torch
 from config import *
@@ -14,9 +13,9 @@ def poem2input(in_poem):
     while ix2word[in_poem[start_ix]] != '<START>':
         start_ix += 1
     end = start_ix
-    while end < len(in_poem) and ix2word[in_poem[end]] != '，':
+    while end < len(in_poem) and ix2word[in_poem[end]] != '。':
         end += 1
-    in_arr = in_poem[start_ix + 1: end]
+    in_arr = in_poem[start_ix + 1: end + 1]
     in_arr = in_arr.tolist()
     in_arr.append(word2ix['<EOP>'])
     in_arr.reverse()
