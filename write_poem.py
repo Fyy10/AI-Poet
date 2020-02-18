@@ -15,7 +15,7 @@ def write_poem():
         model.load_state_dict(torch.load(Config.model_path, Config.device))
     elif Config.model_type == 'Seq2Seq':
         encoder = Encoder.EncoderRNN(len(word2ix), Config.hidden_dim).to(Config.device)
-        decoder = Decoder.DecoderRNN(Config.hidden_dim, len(word2ix)).to(Config.device)
+        decoder = Decoder.AttnDecoderRNN(Config.hidden_dim, len(word2ix)).to(Config.device)
         encoder.load_state_dict(torch.load('%s_%s.pth' % (Config.model_prefix, 'encoder')))
         decoder.load_state_dict(torch.load('%s_%s.pth' % (Config.model_prefix, 'decoder')))
     else:

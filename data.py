@@ -13,9 +13,9 @@ def poem2input(in_poem):
     while ix2word[in_poem[start_ix]] != '<START>':
         start_ix += 1
     end = start_ix
-    while end < len(in_poem) and ix2word[in_poem[end]] != '。':
+    while end < len(in_poem) and ix2word[in_poem[end]] != '，':
         end += 1
-    in_arr = in_poem[start_ix + 1: end + 1]
+    in_arr = in_poem[start_ix + 1: end]
     in_arr = in_arr.tolist()
     in_arr.append(word2ix['<EOP>'])
     in_arr.reverse()
@@ -26,10 +26,16 @@ def poem2input(in_poem):
 
 def poem2target(in_poem):
     start_ix = 0
-    while ix2word[in_poem[start_ix]] != '<START>':
+    while ix2word[in_poem[start_ix]] != '，':
         start_ix += 1
-    target_arr = in_poem[start_ix + 1:]
-    target_tensor = torch.from_numpy(target_arr)
+    end = start_ix
+    while end < len(in_poem) and ix2word[in_poem[end]] != '。':
+        end += 1
+    target_arr = in_poem[start_ix + 1: end]
+    target_arr = target_arr.tolist()
+    target_arr.append(word2ix['<EOP>'])
+    target_tensor = torch.tensor(target_arr)
+    # target_tensor = torch.from_numpy(target_arr)
     target_tensor = target_tensor.view(-1, 1)
     return target_tensor.long().to(Config.device)
 

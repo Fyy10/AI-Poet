@@ -72,12 +72,12 @@ def generate_seq2seq(encoder, decoder, sentence, ix2word, word2ix, max_length=Co
         decoded_words = []
 
         for di in range(max_length):
-            decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+            decoder_output, decoder_hidden, decoder_attn = decoder(decoder_input, decoder_hidden, encoder_outputs)
             topv, topi = decoder_output.data.topk(1)
             if topi.item() == word2ix['<EOP>']:
                 decoded_words.append('<EOP>')
                 break
             else:
                 decoded_words.append(ix2word[topi.item()])
-            decoder_input = topi.squeeze().detach()
+            decoder_input = topi.detach()
         return decoded_words

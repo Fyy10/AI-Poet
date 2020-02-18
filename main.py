@@ -11,6 +11,7 @@ from data import *
 import time
 import matplotlib.pyplot as plt
 import random
+import os
 
 
 def train_char_rnn():
@@ -35,7 +36,7 @@ def train_char_rnn():
     # optimizer and loss function
     optimizer = optim.Adam(model.parameters(), lr=Config.learning_rate)
     criterion = nn.CrossEntropyLoss()
-    if Config.model_path:
+    if os.path.exists(Config.model_path):
         model.load_state_dict(torch.load(Config.model_path))
 
     learning_route = []
@@ -85,7 +86,10 @@ def train_seq2seq():
 
     # model
     encoder = Encoder.EncoderRNN(len(word2ix), Config.hidden_dim).to(Config.device)
-    decoder = Decoder.DecoderRNN(Config.hidden_dim, len(word2ix)).to(Config.device)
+    decoder = Decoder.AttnDecoderRNN(Config.hidden_dim, len(word2ix)).to(Config.device)
+
+    encoder.train()
+    decoder.train()
 
     # load model
     print('Loading pre-trained model...')
@@ -103,17 +107,34 @@ def train_seq2seq():
     print_loss_total = 0    # reset every print_every
     plot_loss_total = 0     # reset every plot_every
 
-    encoder_optimizer = optim.SGD(encoder.parameters(), lr=Config.learning_rate)
-    decoder_optimizer = optim.SGD(decoder.parameters(), lr=Config.learning_rate)
+    encoder_optimizer = optim.Adam(encoder.parameters(), lr=Config.learning_rate)
+    decoder_optimizer = optim.Adam(decoder.parameters(), lr=Config.learning_rate)
 
     data = data.numpy()
-    training_pairs = [get_pair(random.choice(data)) for it in range(n_iters)]
+
+    # in case of bad data
+    cnt = 0
+    training_pairs = []
+    while cnt < n_iters:
+        sam_data = random.choice(data)
+        idx = 0
+        while idx < len(sam_data) and ix2word[sam_data[idx]] != '，':
+            idx += 1
+        if len(sam_data) - idx < 5:
+            continue
+        pair = get_pair(sam_data)
+        if pair[0].shape[0] < 5 or pair[1].shape[0] < 5:
+            continue
+        training_pairs.append(pair)
+        cnt += 1
+
+    # training_pairs = [get_pair(random.choice(data)) for it in range(n_iters)]
     criterion = nn.NLLLoss()
 
     for iter in range(1, n_iters + 1):
         training_pair = training_pairs[iter - 1]
-        input_tensor = training_pair[0]
-        target_tensor = training_pair[1]
+        input_tensor = training_pair[0]     # [input_len, 1]
+        target_tensor = training_pair[1]    # [target_len, 1]
 
         loss = train_step(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer,
                           criterion, word2ix)
@@ -124,6 +145,10 @@ def train_seq2seq():
             print_loss_ave = print_loss_total / print_every
             print_loss_total = 0
             print('%s (%d %d%%) %.4f' % (timeSince(start, iter / n_iters), iter, iter / n_iters * 100, print_loss_ave))
+
+            # print input and target
+            print([ix2word[ix.item()] for ix in input_tensor])
+            print([ix2word[ix.item()] for ix in target_tensor])
 
         if iter % plot_every == 0:
             plot_loss_ave = plot_loss_total / plot_every
@@ -171,9 +196,9 @@ def train_step(input_tensor, target_tensor, encoder, decoder,
 
     # no teacher forcing
     for di in range(target_length):
-        decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
+        decoder_output, decoder_hidden, decoder_attn = decoder(decoder_input, decoder_hidden, encoder_outputs)
         topv, topi = decoder_output.topk(1)
-        decoder_input = topi.squeeze().detach()     # detach from history as input (?)
+        decoder_input = topi.detach()   # detach from history as input (?)
 
         loss += criterion(decoder_output, target_tensor[di])
         if decoder_input.item() == word2ix['<EOP>']:

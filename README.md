@@ -6,6 +6,8 @@ Try to train a neural network to automatically write Chinese poems
 
 ### Training
 
+You can select the model (CharRNN / Seq2Seq) by changing `config.py`
+
 To train the model, just input the following command in the terminal
 
 ```shell script
